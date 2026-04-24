@@ -1,0 +1,75 @@
+// === Parking Sensor ===
+// Pins
+const int TRIG_PIN  = 2;
+const int ECHO_PIN  = 3;
+const int LED_GREEN  = 9;
+const int LED_YELLOW = 10;
+const int LED_RED    = 11;
+const int MOTOR_IN1  = 4;
+const int MOTOR_IN2  = 5;  // PWM pin for speed
+
+// Distance thresholds (cm)
+const int FAR    = 60;  // > 60cm  → green, motor slow
+const int MEDIUM = 30;  // 30-60cm → yellow, motor medium
+// < 30cm → red, motor fast
+
+void setup() {
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(LED_GREEN,  OUTPUT);
+  pinMode(LED_YELLOW, OUTPUT);
+  pinMode(LED_RED,    OUTPUT);
+  pinMode(MOTOR_IN1,  OUTPUT);
+  pinMode(MOTOR_IN2,  OUTPUT);
+
+  // Set motor direction (forward)
+  digitalWrite(MOTOR_IN1, HIGH);
+  Serial.begin(9600);
+}
+
+long getDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000); // timeout 30ms
+  if (duration == 0) return 999; // no echo = too far
+  return duration * 0.034 / 2;  // convert to cm
+}
+
+void setLEDs(bool green, bool yellow, bool red) {
+  digitalWrite(LED_GREEN,  green  ? HIGH : LOW);
+  digitalWrite(LED_YELLOW, yellow ? HIGH : LOW);
+  digitalWrite(LED_RED,    red    ? HIGH : LOW);
+}
+
+void setMotorSpeed(int speed) {  // 0–255
+  analogWrite(MOTOR_IN2, speed);
+}
+
+void loop() {
+  long dist = getDistance();
+  Serial.print("Distance: ");
+  Serial.print(dist);
+  Serial.println(" cm");
+
+  if (dist > FAR) {
+    // Far away — green, slow motor
+    setLEDs(true, false, false);
+    setMotorSpeed(80);
+
+  } else if (dist > MEDIUM) {
+    // Getting close — yellow, medium motor
+    setLEDs(false, true, false);
+    setMotorSpeed(160);
+
+  } else {
+    // Very close! — red, fast motor
+    setLEDs(false, false, true);
+    setMotorSpeed(255);
+  }
+
+  delay(100);
+}
